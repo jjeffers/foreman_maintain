@@ -32,6 +32,7 @@ module ForemanMaintain::Scenarios
         elsif !feature(:satellite)
           add_step(Procedures::Content::Prepare)
         end
+        enable_and_start_services
       end
     end
 
