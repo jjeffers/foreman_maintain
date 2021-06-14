@@ -41,7 +41,7 @@ module Procedures::Pulp
                     python-pulp-python-common python-pulp-repoauth python-pulp-rpm-common
                     python-pulp-streamer python-pymongo python-pymongo-gridfs python2-amqp
                     python2-billiard python2-celery python2-debpkgr python2-django python2-kombu
-                    python2-solv python2-vine pulp-katello]
+                    python2-solv python2-vine pulp-katello python3-pulp-2to3-migration]
 
       @installed_pulp_packages ||= possible.select { |pkg| find_package(pkg) }
       @installed_pulp_packages
@@ -70,6 +70,10 @@ module Procedures::Pulp
 
       remove_mongo
 
+      drop_migration_tables
+
+      drop_migrations
+
       delete_pulp_data(rm_cmds) if rm_cmds.any?
     end
 
@@ -84,6 +88,60 @@ module Procedures::Pulp
         packages_action(:remove, ['rh-mongodb34-*'], :assumeyes => true)
       end
     end
+
+    def drop_migration_tables
+      with_spinner('Dropping migration tables') do
+        feature(:pulpcore_database).psql(<<-SQL)
+          BEGIN;
+          DROP TABLE IF EXISTS pulp_2to3_migration_migrationplan,
+            pulp_2to3_migration_pulp2blob,
+            pulp_2to3_migration_pulp2content,
+            pulp_2to3_migration_pulp2debcomponent,
+            pulp_2to3_migration_pulp2debcomponentpackage,
+            pulp_2to3_migration_pulp2debpackage,
+            pulp_2to3_migration_pulp2debrelease,
+            pulp_2to3_migration_pulp2debreleasearchitecture,
+            pulp_2to3_migration_pulp2distribution,
+            pulp_2to3_migration_pulp2distributor,
+            pulp_2to3_migration_pulp2distributor_pulp2_repos,
+            pulp_2to3_migration_pulp2erratum,
+            pulp_2to3_migration_pulp2importer,
+            pulp_2to3_migration_pulp2iso,
+            pulp_2to3_migration_pulp2lazycatalog,
+            pulp_2to3_migration_pulp2manifest,
+            pulp_2to3_migration_pulp2manifestlist,
+            pulp_2to3_migration_pulp2modulemd,
+            pulp_2to3_migration_pulp2modulemddefaults,
+            pulp_2to3_migration_pulp2packagecategory,
+            pulp_2to3_migration_pulp2packageenvironment,
+            pulp_2to3_migration_pulp2packagegroup,
+            pulp_2to3_migration_pulp2packagelangpacks,
+            pulp_2to3_migration_pulp2repocontent,
+            pulp_2to3_migration_pulp2repository,
+            pulp_2to3_migration_pulp2rpm,
+            pulp_2to3_migration_pulp2srpm,
+            pulp_2to3_migration_pulp2tag,
+            pulp_2to3_migration_pulp2yumrepometadatafile,
+            pulp_2to3_migration_reposetup CASCADE;
+          DROP SEQUENCE IF EXISTS pulp_2to3_migration_pulp2distributor_pulp2_repos_id_seq;
+          END;
+        SQL
+      end
+    end
+
+    def drop_migrations
+      with_spinner('Dropping migrations') do
+        feature(:pulpcore_database).psql(<<-SQL)
+          BEGIN;
+          DELETE FROM django_migrations WHERE app = 'pulp_2to3_migration';
+          DELETE FROM auth_permission WHERE content_type_id in (SELECT id FROM django_content_type WHERE app_label = 'pulp_2to3_migration');
+          DELETE FROM django_admin_log WHERE content_type_id in (SELECT id FROM django_content_type WHERE app_label = 'pulp_2to3_migration');
+          DELETE FROM django_content_type WHERE app_label = 'pulp_2to3_migration';
+          END;
+        SQL
+      end
+    end
+    # rubocop:enable Metrics/BlockLength
 
     def delete_pulp_data(rm_cmds)
       with_spinner('Deleting pulp2 data directories') do |spinner|
