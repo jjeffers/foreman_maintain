@@ -2,6 +2,7 @@ module Procedures::Pulp
   class Remove < ForemanMaintain::Procedure
     metadata do
       description 'Remove pulp2'
+      param :assumeyes, 'Do not ask for confirmation', :default => false
 
       confine do
         check_min_version('katello-common', '4.0')
@@ -52,9 +53,9 @@ module Procedures::Pulp
     end
 
     def ask_to_proceed(rm_cmds)
-      question = "\nWARNING: All pulp2 packages will be removed with the following commands:\n" \
-        "\n# rpm -e #{pulp_packages.join('  ')}" \
-        "\n# yum remove rh-mongodb34-*" \
+      question = "\nWARNING: All pulp2 packages will be removed with the following commands:\n"
+      question += "\n# rpm -e #{pulp_packages.join('  ')}" if pulp_packages.any?
+      question += "\n# yum remove rh-mongodb34-*" \
         "\n\nAll pulp2 data will be removed.\n"
       question += rm_cmds.collect { |cmd| "\n# #{cmd}" }.join
       question += "\n\nDo you want to proceed?"
@@ -64,7 +65,10 @@ module Procedures::Pulp
 
     def run
       rm_cmds = data_dir_removal_cmds
-      ask_to_proceed(rm_cmds) if rm_cmds.any?
+
+      assumeyes_val = @assumeyes.nil? ? assumeyes? : @assumeyes
+
+      ask_to_proceed(rm_cmds) if !assumeyes_val
 
       remove_pulp
 
@@ -79,7 +83,7 @@ module Procedures::Pulp
 
     def remove_pulp
       with_spinner('Removing pulp2 packages') do
-        execute!("rpm -e #{pulp_packages.join('  ')}")
+        execute!("rpm -e #{pulp_packages.join('  ')}") if pulp_packages.any?
       end
     end
 
