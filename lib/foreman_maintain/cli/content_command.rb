@@ -38,7 +38,8 @@ module ForemanMaintain
         interactive_option(['assumeyes'])
         def execute
           run_scenarios_and_exit(
-            Scenarios::Content::RemovePulp2.new(:assumeyes => assumeyes?))
+            Scenarios::Content::RemovePulp2.new(:assumeyes => assumeyes?)
+          )
         end
       end
     end

@@ -68,7 +68,7 @@ module Procedures::Pulp
 
       assumeyes_val = @assumeyes.nil? ? assumeyes? : @assumeyes
 
-      ask_to_proceed(rm_cmds) if !assumeyes_val
+      ask_to_proceed(rm_cmds) unless assumeyes_val
 
       remove_pulp
 
