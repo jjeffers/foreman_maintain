@@ -70,7 +70,7 @@ module Procedures::Pulp
 
       ask_to_proceed(rm_cmds) unless assumeyes_val
 
-      remove_pulp
+      remove_pulp if pulp_packages.any?
 
       remove_mongo
 
